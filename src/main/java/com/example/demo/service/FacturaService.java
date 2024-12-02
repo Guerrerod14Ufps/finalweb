@@ -45,7 +45,7 @@ public class FacturaService {
 
     @Transactional
     public String crearFactura(String tiendaUuid, FacturaDTO facturaDTO) {
-        // Validaciones iniciales
+    	
         if (facturaDTO.getCliente() == null)
             throw new CustomException("No hay información del cliente", HttpStatus.NOT_FOUND);
 
@@ -61,23 +61,22 @@ public class FacturaService {
         if (facturaDTO.getMediosPago() == null || facturaDTO.getMediosPago().isEmpty())
             throw new CustomException("No hay medios de pagos asignados para esta compra", HttpStatus.NOT_FOUND);
 
-        // Verificar la tienda
+        
         Tienda tienda = tiendaRepository.findByUuid(tiendaUuid)
                 .orElseThrow(() -> new CustomException("Tienda no encontrada", HttpStatus.NOT_FOUND));
 
-        // Verificar el vendedor
+        
         Vendedor vendedor = vendedorRepository.findByDocumento(facturaDTO.getVendedor().getDocumento())
                 .orElseThrow(() -> new CustomException("El vendedor no existe en la tienda", HttpStatus.NOT_FOUND));
 
-        // Verificar el cajero
+
         Cajero cajero = cajeroRepository.findByToken(facturaDTO.getCajero().getToken())
                 .orElseThrow(() -> new CustomException("El token no corresponde a ningún cajero en la tienda", HttpStatus.NOT_FOUND));
 
         if (!cajero.getTienda().equals(tienda)) {
             throw new CustomException("El cajero no está asignado a esta tienda", HttpStatus.FORBIDDEN);
         }
-
-        // Validar y registrar el cliente
+        
         Cliente cliente = clienteRepository.findByDocumentoAndTipoDocumento(
                         facturaDTO.getCliente().getDocumento(),
                         facturaDTO.getCliente().getTipoDocumento())
@@ -91,7 +90,6 @@ public class FacturaService {
                     return clienteRepository.save(nuevoCliente);
                 });
 
-        // Crear la compra
         Compra compra = new Compra();
         compra.setCliente(cliente);
         compra.setTienda(tienda);
@@ -99,10 +97,9 @@ public class FacturaService {
         compra.setCajero(cajero);
         compra.setImpuestos(facturaDTO.getImpuesto());
         compra.setFecha(LocalDateTime.now());
-        compra.setTotal(0.0); // Calculado después
+        compra.setTotal(0.0);
         compra = compraRepository.save(compra);
 
-        // Agregar los productos
         Double total = 0.0;
         for (FacturaDTO.ProductoDTO productoDTO : facturaDTO.getProductos()) {
             Producto producto = productoRepository.findByReferencia(productoDTO.getReferencia())
@@ -123,8 +120,7 @@ public class FacturaService {
             total += detalles.getPrecio();
             detallesCompraRepository.save(detalles);
         }
-
-        // Registrar los medios de pago
+     
         Double totalPagos = 0.0;
         for (FacturaDTO.MedioPagoDTO medioPagoDTO : facturaDTO.getMediosPago()) {
             TipoPago tipoPago = new TipoPago();
@@ -140,16 +136,13 @@ public class FacturaService {
             pagoRepository.save(pago);
         }
 
-        // Validar total de pagos
         if (!total.equals(totalPagos)) {
             throw new CustomException("El valor de la factura no coincide con el valor total de los pagos", HttpStatus.FORBIDDEN);
         }
 
-        // Actualizar el total de la compra
         compra.setTotal(total);
         compraRepository.save(compra);
 
-        // Respuesta formateada
         return String.format(
                 "{\"status\": \"success\", \"message\": \"La factura se ha creado correctamente con el número: %d\", \"data\": {\"numero\": \"%d\", \"total\": \"%.2f\", \"fecha\": \"%s\"}}",
                 compra.getId(), compra.getId(), compra.getTotal(), compra.getFecha().toLocalDate());
@@ -157,39 +150,32 @@ public class FacturaService {
     
     
     public FacturaResponseDTO consultarFactura(FacturaRequestDTO request) {
-        // Validar el token del cajero
+
         Cajero cajero = cajeroRepository.findByToken(request.getToken())
                 .orElseThrow(() -> new RuntimeException("El token no corresponde a ningún cajero"));
-
-        // Verificar si el cajero está asociado a la tienda
+    
         Compra compra = compraRepository.findById(request.getFactura())
                 .orElseThrow(() -> new RuntimeException("Factura no encontrada"));
 
-        // Validar que la factura pertenece a la tienda del cajero
         if (!compra.getTienda().getId().equals(cajero.getTienda().getId())) {
             throw new RuntimeException("El cajero no está asignado a esta tienda");
         }
 
-        // Obtener cliente
         Cliente cliente = clienteRepository.findById(Integer.parseInt(request.getCliente()))
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
 
-        // Obtener detalles de la compra
         List<DetallesCompra> detalles = detallesCompraRepository.findByCompraId(request.getFactura());
 
-        // Crear el DTO de respuesta
         FacturaResponseDTO response = new FacturaResponseDTO();
         response.setTotal(compra.getTotal());
         response.setImpuestos(compra.getImpuestos());
 
-        // Llenar la información del cliente
         FacturaResponseDTO.ClienteDTO clienteDTO = new FacturaResponseDTO.ClienteDTO();
         clienteDTO.setDocumento(cliente.getDocumento());
         clienteDTO.setNombre(cliente.getNombre());
         clienteDTO.setTipo_documento(cliente.getTipoDocumento().getNombre());
         response.setCliente(clienteDTO);
 
-        // Llenar los detalles de los productos
         List<FacturaResponseDTO.ProductoDTO> productos = detalles.stream().map(detalle -> {
             FacturaResponseDTO.ProductoDTO productoDTO = new FacturaResponseDTO.ProductoDTO();
             productoDTO.setReferencia(detalle.getProducto().getReferencia());
@@ -203,7 +189,6 @@ public class FacturaService {
 
         response.setProductos(productos);
 
-        // Llenar la información del cajero
         FacturaResponseDTO.CajeroDTO cajeroDTO = new FacturaResponseDTO.CajeroDTO();
         cajeroDTO.setDocumento(cajero.getDocumento());
         cajeroDTO.setNombre(cajero.getNombre());

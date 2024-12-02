@@ -10,13 +10,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/crear")
+@RequestMapping()
 public class FacturaController {
 
     @Autowired
     private FacturaService facturaService;
 
-    @PostMapping("/{tiendaUuid}")
+    @PostMapping("/crear/{tiendaUuid}")
     public ResponseEntity<String> crearFactura(@PathVariable String tiendaUuid, @RequestBody FacturaDTO facturaDTO) {
         try {
             String respuesta = facturaService.crearFactura(tiendaUuid, facturaDTO);
@@ -29,13 +29,13 @@ public class FacturaController {
     }
     
 
-    @PostMapping("/{tiendaId}")
-    public ResponseEntity<FacturaResponseDTO> consultarFactura(@PathVariable String tiendaId, @RequestBody FacturaRequestDTO request) {
+    @PostMapping("/consultar/{tiendaUuid}")
+    public ResponseEntity<FacturaResponseDTO> consultarFactura(@PathVariable String tiendaUuid, @RequestBody FacturaRequestDTO request) {
         try {
             FacturaResponseDTO facturaResponse = facturaService.consultarFactura(request);
             return ResponseEntity.ok(facturaResponse);
         } catch (RuntimeException e) {
-            return ResponseEntity.status(404).body(new FacturaResponseDTO());  // Retornar el error si ocurre
+            return ResponseEntity.status(404).body(new FacturaResponseDTO()); 
         }
     }
 }

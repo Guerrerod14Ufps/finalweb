@@ -100,4 +100,4 @@ INSERT INTO pago
 VALUES(1, 1, 1, 'VISA', 1, 7360.00);
 INSERT INTO pago
 (id, compra_id, tipo_pago_id, tarjeta_tipo, cuotas, valor)
-VALUES(2, 1, 4, NULL, NULL, 368.00);-
+VALUES(2, 1, 4, NULL, NULL, 368.00);

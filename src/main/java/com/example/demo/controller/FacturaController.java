@@ -1,8 +1,12 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.FacturaDTO;
+import com.example.demo.dto.FacturaRequestDTO;
+import com.example.demo.dto.FacturaResponseDTO;
+import com.example.demo.exception.CustomException;
 import com.example.demo.service.FacturaService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -13,12 +17,25 @@ public class FacturaController {
     private FacturaService facturaService;
 
     @PostMapping("/{tiendaUuid}")
-    public String crearFactura(@PathVariable String tiendaUuid, @RequestBody FacturaDTO facturaDTO) {
+    public ResponseEntity<String> crearFactura(@PathVariable String tiendaUuid, @RequestBody FacturaDTO facturaDTO) {
         try {
-            facturaService.crearFactura(tiendaUuid, facturaDTO);
-            return "Factura creada exitosamente";
+            String respuesta = facturaService.crearFactura(tiendaUuid, facturaDTO);
+            return ResponseEntity.ok(respuesta);
+        } catch (CustomException e) {
+            return ResponseEntity.status(e.getStatus()).body(String.format("{\"status\": \"error\", \"message\": \"%s\", \"data\": null}", e.getMessage()));
         } catch (Exception e) {
-            return "Error al crear la factura: " + e.getMessage();
+            return ResponseEntity.status(500).body("{\"status\": \"error\", \"message\": \"Error interno del servidor\", \"data\": null}");
+        }
+    }
+    
+
+    @PostMapping("/{tiendaId}")
+    public ResponseEntity<FacturaResponseDTO> consultarFactura(@PathVariable String tiendaId, @RequestBody FacturaRequestDTO request) {
+        try {
+            FacturaResponseDTO facturaResponse = facturaService.consultarFactura(request);
+            return ResponseEntity.ok(facturaResponse);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(new FacturaResponseDTO());  // Retornar el error si ocurre
         }
     }
 }
